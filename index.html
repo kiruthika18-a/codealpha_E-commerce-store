@@ -1,0 +1,382 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Store</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 {
+            margin: 0;
+        }
+        nav a {
+            color: white;
+            margin: 0 10px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .section {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .section.active {
+            display: block;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .product-card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .product-card img {
+            max-width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .cart-table, .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .cart-table th, .cart-table td, .orders-table th, .orders-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .error {
+            color: red;
+            display: none;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>E-Commerce Store</h1>
+        <nav>
+            <a id="nav-home" onclick="showSection('home')">Home</a>
+            <a id="nav-cart" onclick="showSection('cart')">Cart</a>
+            <a id="nav-orders" onclick="showSection('orders')">Order History</a>
+            <span id="user-status">Guest</span>
+            <a id="nav-login" onclick="showSection('login')">Login</a>
+            <a id="nav-register" onclick="showSection('register')">Register</a>
+            <a id="nav-logout" onclick="logout()" style="display: none;">Logout</a>
+        </nav>
+    </header>
+    <div class="container">
+        <div id="home-section" class="section active">
+            <h2>Products</h2>
+            <div id="product-list" class="product-grid"></div>
+        </div>
+        <div id="product-details-section" class="section">
+            <h2>Product Details</h2>
+            <div id="product-details"></div>
+            <button onclick="showSection('home')">Back to Home</button>
+        </div>
+        <div id="cart-section" class="section">
+            <h2>Shopping Cart</h2>
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="cart-items"></tbody>
+            </table>
+            <p>Total: $<span id="cart-total">0</span></p>
+            <button onclick="placeOrder()">Place Order</button>
+            <button onclick="showSection('home')">Back to Home</button>
+        </div>
+        <div id="login-section" class="section">
+            <h2>Login</h2>
+            <p class="error" id="login-error"></p>
+            <input type="email" id="login-email" placeholder="Email">
+            <input type="password" id="login-password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <p><a onclick="showSection('register')">New User? Register</a></p>
+        </div>
+        <div id="register-section" class="section">
+            <h2>Register</h2>
+            <p class="error" id="register-error"></p>
+            <input type="email" id="register-email" placeholder="Email">
+            <input type="password" id="register-password" placeholder="Password">
+            <button onclick="register()">Register</button>
+            <p><a onclick="showSection('login')">Already Registered? Login</a></p>
+        </div>
+        <div id="orders-section" class="section">
+            <h2>Order History</h2>
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Total</th>
+                        <th>Items</th>
+                    </tr>
+                </thead>
+                <tbody id="order-items"></tbody>
+            </table>
+            <button onclick="showSection('home')">Back to Home</button>
+        </div>
+        <div id="order-confirmation-section" class="section">
+            <h2>Order Confirmation</h2>
+            <p id="order-confirmation-message"></p>
+            <button onclick="showSection('home')">Back to Home</button>
+        </div>
+    </div>
+    <script>
+        let currentUser = null;
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('nav a').forEach(link => {
+                link.style.fontWeight = 'normal';
+            });
+            const section = document.getElementById(`${sectionId}-section`);
+            const navLink = document.getElementById(`nav-${sectionId}`);
+            if (section) section.classList.add('active');
+            if (navLink) navLink.style.fontWeight = 'bold';
+        }
+
+        async function fetchProducts() {
+            const response = await fetch('/api/products');
+            const data = await response.json();
+            const productList = document.getElementById('product-list');
+            productList.innerHTML = '';
+            data.products.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p>$${product.price}</p>
+                    <button onclick="viewProduct('${product.id}')">View Details</button>
+                    <button onclick="addToCart('${product.id}')">Add to Cart</button>
+                `;
+                productList.appendChild(card);
+            });
+        }
+
+        async function viewProduct(productId) {
+            const response = await fetch(`/api/products/${productId}`);
+            const product = await response.json();
+            const details = document.getElementById('product-details');
+            details.innerHTML = `
+                <img src="${product.image}" alt="${product.name}" style="max-width: 300px;">
+                <h3>${product.name}</h3>
+                <p>$${product.price}</p>
+                <p>${product.description}</p>
+                <button onclick="addToCart('${product.id}')">Add to Cart</button>
+            `;
+            showSection('product-details');
+        }
+
+        async function addToCart(productId) {
+            if (!currentUser) {
+                alert('Please login to add items to cart');
+                showSection('login');
+                return;
+            }
+            await fetch('/api/cart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id, productId })
+            });
+            alert('Product added to cart');
+        }
+
+        async function fetchCart() {
+            if (!currentUser) return;
+            const response = await fetch(`/api/cart?userId=${currentUser.id}`);
+            const data = await response.json();
+            const cartItems = document.getElementById('cart-items');
+            cartItems.innerHTML = '';
+            let total = 0;
+            data.cart.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.product.name}</td>
+                    <td>$${item.product.price}</td>
+                    <td><input type="number" value="${item.quantity}" min="1" onchange="updateCart('${item.product.id}', this.value)"></td>
+                    <td>$${item.product.price * item.quantity}</td>
+                    <td><button onclick="removeFromCart('${item.product.id}')">Remove</button></td>
+                `;
+                cartItems.appendChild(row);
+                total += item.product.price * item.quantity;
+            });
+            document.getElementById('cart-total').textContent = total.toFixed(2);
+        }
+
+        async function updateCart(productId, quantity) {
+            await fetch('/api/cart', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id, productId, quantity: parseInt(quantity) })
+            });
+            fetchCart();
+        }
+
+        async function removeFromCart(productId) {
+            await fetch('/api/cart', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id, productId })
+            });
+            fetchCart();
+        }
+
+        async function register() {
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const error = document.getElementById('register-error');
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Registration successful! Please login.');
+                showSection('login');
+            } else {
+                error.textContent = data.message;
+                error.style.display = 'block';
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const error = document.getElementById('login-error');
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            if (data.success) {
+                currentUser = data.user;
+                document.getElementById('user-status').textContent = currentUser.email;
+                document.getElementById('nav-login').style.display = 'none';
+                document.getElementById('nav-register').style.display = 'none';
+                document.getElementById('nav-logout').style.display = 'inline';
+                document.getElementById('nav-cart').style.display = 'inline';
+                document.getElementById('nav-orders').style.display = 'inline';
+                showSection('home');
+                fetchCart();
+                fetchOrders();
+            } else {
+                error.textContent = data.message;
+                error.style.display = 'block';
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('user-status').textContent = 'Guest';
+            document.getElementById('nav-login').style.display = 'inline';
+            document.getElementById('nav-register').style.display = 'inline';
+            document.getElementById('nav-logout').style.display = 'none';
+            document.getElementById('nav-cart').style.display = 'none';
+            document.getElementById('nav-orders').style.display = 'none';
+            showSection('home');
+        }
+
+        async function placeOrder() {
+            if (!currentUser) {
+                alert('Please login to place an order');
+                showSection('login');
+                return;
+            }
+            const response = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id })
+            });
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('order-confirmation-message').textContent = `Order ${data.order.id} placed successfully! Total: $${data.order.total}`;
+                showSection('order-confirmation');
+                fetchCart();
+                fetchOrders();
+            }
+        }
+
+        async function fetchOrders() {
+            if (!currentUser) return;
+            const response = await fetch(`/api/orders?userId=${currentUser.id}`);
+            const data = await response.json();
+            const orderItems = document.getElementById('order-items');
+            orderItems.innerHTML = '';
+            data.orders.forEach(order => {
+                const row = document.createElement('tr');
+                const items = order.items.map(item => `${item.product.name} (x${item.quantity})`).join(', ');
+                row.innerHTML = `
+                    <td>${order.id}</td>
+                    <td>${new Date(order.date).toLocaleDateString()}</td>
+                    <td>$${order.total}</td>
+                    <td>${items}</td>
+                `;
+                orderItems.appendChild(row);
+            });
+        }
+
+        // Initialize
+        fetchProducts();
+        document.getElementById('nav-cart').style.display = 'none';
+        document.getElementById('nav-orders').style.display = 'none';
+    </script>
+</body>
+</html>
